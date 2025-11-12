@@ -1,16 +1,77 @@
+# Cast Service
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "fastapiapp.fullname" . }}
+  name: cast-service-{{ .Values.environment }}
   labels:
-    {{- include "fastapiapp.labels" . | nindent 4 }}
+    app: cast-service
+    environment: {{ .Values.environment }}
 spec:
-  type: {{ .Values.service.type }}
-  ports:
-    - port: {{ .Values.service.port }}
-      targetPort: {{ .Values.service.targetPort }}
-      nodePort: {{ .Values.service.nodePort }}
-      protocol: TCP
-      name: http
+  type: {{ .Values.castService.service.type }}
   selector:
-    {{- include "fastapiapp.selectorLabels" . | nindent 4 }}
+    app: cast-service
+    environment: {{ .Values.environment }}
+  ports:
+    - port: {{ .Values.castService.service.port }}
+      targetPort: {{ .Values.castService.service.targetPort }}
+      nodePort: {{ .Values.castService.service.nodePort }}
+
+---
+# Movie Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: movie-service-{{ .Values.environment }}
+  labels:
+    app: movie-service
+    environment: {{ .Values.environment }}
+spec:
+  type: {{ .Values.movieService.service.type }}
+  selector:
+    app: movie-service
+    environment: {{ .Values.environment }}
+  ports:
+    - port: {{ .Values.movieService.service.port }}
+      targetPort: {{ .Values.movieService.service.targetPort }}
+      nodePort: {{ .Values.movieService.service.nodePort }}
+
+---
+# Cast Database Service
+{{- if .Values.castService.database.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: cast-db-{{ .Values.environment }}
+  labels:
+    app: cast-db
+    environment: {{ .Values.environment }}
+spec:
+  type: ClusterIP
+  selector:
+    app: cast-db
+    environment: {{ .Values.environment }}
+  ports:
+    - port: 5432
+      targetPort: 5432
+{{- end }}
+
+---
+# Movie Database Service
+{{- if .Values.movieService.database.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: movie-db-{{ .Values.environment }}
+  labels:
+    app: movie-db
+    environment: {{ .Values.environment }}
+spec:
+  type: ClusterIP
+  selector:
+    app: movie-db
+    environment: {{ .Values.environment }}
+  ports:
+    - port: 5432
+      targetPort: 5432
+{{- end }}
+

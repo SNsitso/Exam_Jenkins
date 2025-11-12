@@ -1,61 +1,153 @@
+# Cast Service Deployment
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "fastapiapp.fullname" . }}
+  name: cast-service-{{ .Values.environment }}
   labels:
-    {{- include "fastapiapp.labels" . | nindent 4 }}
+    app: cast-service
+    environment: {{ .Values.environment }}
 spec:
-  {{- if not .Values.autoscaling.enabled }}
-  replicas: {{ .Values.replicaCount }}
-  {{- end }}
+  replicas: {{ .Values.castService.replicaCount }}
   selector:
     matchLabels:
-      {{- include "fastapiapp.selectorLabels" . | nindent 6 }}
+      app: cast-service
+      environment: {{ .Values.environment }}
   template:
     metadata:
-      {{- with .Values.podAnnotations }}
-      annotations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
       labels:
-        {{- include "fastapiapp.selectorLabels" . | nindent 8 }}
+        app: cast-service
+        environment: {{ .Values.environment }}
     spec:
-      {{- with .Values.imagePullSecrets }}
-      imagePullSecrets:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      serviceAccountName: {{ include "fastapiapp.serviceAccountName" . }}
-      securityContext:
-        {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
-        - name: {{ .Chart.Name }}
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+        - name: cast-service
+          image: "{{ .Values.castService.image.repository }}:{{ .Values.castService.image.tag }}"
+          imagePullPolicy: {{ .Values.castService.image.pullPolicy }}
           ports:
-            - name: http
-              containerPort: 8000
-              protocol: TCP
-          livenessProbe:
-            httpGet:
-              path: /api/v1/checkapi
-              port: http
-          readinessProbe:
-            httpGet:
-              path: /api/v1/checkapi
-              port: http
-          resources:
-            {{- toYaml .Values.resources | nindent 12 }}
-      {{- with .Values.nodeSelector }}
-      nodeSelector:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.affinity }}
-      affinity:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.tolerations }}
-      tolerations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+            - containerPort: {{ .Values.castService.service.targetPort }}
+          env:
+            - name: DATABASE_URI
+              value: "postgresql://{{ .Values.castService.database.username }}:{{ .Values.castService.database.password }}@cast-db-{{ .Values.environment }}:5432/{{ .Values.castService.database.name }}"
+          command: ["uvicorn"]
+          args: ["app.main:app", "--host", "0.0.0.0", "--port", "{{ .Values.castService.service.targetPort }}"]
+
+---
+# Movie Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: movie-service-{{ .Values.environment }}
+  labels:
+    app: movie-service
+    environment: {{ .Values.environment }}
+spec:
+  replicas: {{ .Values.movieService.replicaCount }}
+  selector:
+    matchLabels:
+      app: movie-service
+      environment: {{ .Values.environment }}
+  template:
+    metadata:
+      labels:
+        app: movie-service
+        environment: {{ .Values.environment }}
+    spec:
+      containers:
+        - name: movie-service
+          image: "{{ .Values.movieService.image.repository }}:{{ .Values.movieService.image.tag }}"
+          imagePullPolicy: {{ .Values.movieService.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.movieService.service.targetPort }}
+          env:
+            - name: DATABASE_URI
+              value: "postgresql://{{ .Values.movieService.database.username }}:{{ .Values.movieService.database.password }}@movie-db-{{ .Values.environment }}:5432/{{ .Values.movieService.database.name }}"
+            - name: CAST_SERVICE_HOST_URL
+              value: "http://cast-service-{{ .Values.environment }}:{{ .Values.castService.service.port }}/api/v1/casts/"
+          command: ["uvicorn"]
+          args: ["app.main:app", "--host", "0.0.0.0", "--port", "{{ .Values.movieService.service.targetPort }}"]
+
+---
+# Cast Database Deployment
+{{- if .Values.castService.database.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cast-db-{{ .Values.environment }}
+  labels:
+    app: cast-db
+    environment: {{ .Values.environment }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cast-db
+      environment: {{ .Values.environment }}
+  template:
+    metadata:
+      labels:
+        app: cast-db
+        environment: {{ .Values.environment }}
+    spec:
+      containers:
+        - name: postgres
+          image: "{{ .Values.database.image.repository }}:{{ .Values.database.image.tag }}"
+          imagePullPolicy: {{ .Values.database.image.pullPolicy }}
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: {{ .Values.castService.database.username }}
+            - name: POSTGRES_PASSWORD
+              value: {{ .Values.castService.database.password }}
+            - name: POSTGRES_DB
+              value: {{ .Values.castService.database.name }}
+          volumeMounts:
+            - name: cast-db-storage
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: cast-db-storage
+          emptyDir: {}
+{{- end }}
+
+---
+# Movie Database Deployment
+{{- if .Values.movieService.database.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: movie-db-{{ .Values.environment }}
+  labels:
+    app: movie-db
+    environment: {{ .Values.environment }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: movie-db
+      environment: {{ .Values.environment }}
+  template:
+    metadata:
+      labels:
+        app: movie-db
+        environment: {{ .Values.environment }}
+    spec:
+      containers:
+        - name: postgres
+          image: "{{ .Values.database.image.repository }}:{{ .Values.database.image.tag }}"
+          imagePullPolicy: {{ .Values.database.image.pullPolicy }}
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: {{ .Values.movieService.database.username }}
+            - name: POSTGRES_PASSWORD
+              value: {{ .Values.movieService.database.password }}
+            - name: POSTGRES_DB
+              value: {{ .Values.movieService.database.name }}
+          volumeMounts:
+            - name: movie-db-storage
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: movie-db-storage
+          emptyDir: {}
+{{- end }}
+

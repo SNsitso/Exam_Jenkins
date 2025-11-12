@@ -1,0 +1,37 @@
+GitHub Repository: https://github.com/SNsitso/Exam_Jenkins.git
+
+Ce repository contient l'implémentation complète du projet DevOps avec :
+
+ Architecture microservices Python/FastAPI
+ Pipeline CI/CD Jenkins complet  
+ Déploiement Kubernetes avec Helm
+ 4 environnements (dev/QA/staging/prod)
+ Tests automatisés et monitoring
+ Documentation complète
+
+Structure du projet :
+- cast-service/ : Microservice de gestion des acteurs
+- movie-service/ : Microservice de gestion des films  
+- charts/ : Charts Helm pour Kubernetes
+- Jenkinsfile : Pipeline CI/CD complet
+- docker-compose.yml : Orchestration locale
+- Scripts d'automatisation et de test
+
+Le pipeline Jenkins gère automatiquement :
+1. Build des 2 microservices
+2. Tests automatisés 
+3. Push vers DockerHub
+4. Déploiement multi-environnements
+5. Restriction production sur branche Master
+
+Commandes de déploiement :
+- Local: docker-compose up -d
+- Kubernetes: helm install microservices-dev ./charts --namespace dev
+
+Accès aux services :
+- Cast Service API: http://localhost:8002/api/v1/casts/docs
+- Movie Service API: http://localhost:8001/api/v1/movies/docs  
+- API Gateway: http://localhost:8080/
+
+Dernière mise à jour : Novembre 2025
+Ingénieur DevOps : Serge Nyuiadzi (SNsitso)

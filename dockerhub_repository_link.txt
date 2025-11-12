@@ -1,0 +1,49 @@
+DockerHub Repository: https://hub.docker.com/repositories/snsitso
+
+Images Docker publiées pour le projet DevOps :
+
+ IMAGES MICROSERVICES :
+- snsitso/cast-service:latest (Microservice gestion des acteurs)
+- snsitso/movie-service:latest (Microservice gestion des films)
+- snsitso/cast-service:{BUILD_NUMBER} (Versions spécifiques)
+- snsitso/movie-service:{BUILD_NUMBER} (Versions spécifiques)
+
+ 
+
+ STRATÉGIE DE TAGGING :
+- latest : Dernière version stable
+- {BUILD_NUMBER} : Version spécifique du build Jenkins
+- Multi-architecture : linux/amd64
+
+ UTILISATION :
+```bash
+# Pull des images
+docker pull snsitso/cast-service:latest
+docker pull snsitso/movie-service:latest
+
+# Démarrage local
+docker run -p 8001:8000 snsitso/cast-service:latest
+docker run -p 8002:8000 snsitso/movie-service:latest
+```
+
+ CONFIGURATION PIPELINE :
+Le Jenkins pipeline pousse automatiquement :
+- Images taguées avec le numéro de build
+- Image latest mise à jour à chaque build réussi
+- Authentification sécurisée via credentials Jenkins
+
+ MÉTRIQUES :
+- Images légères basées sur Python 3.8-slim
+- Build time optimisé avec cache Docker
+- Sécurité : scanning automatique des vulnérabilités
+
+ DÉPLOIEMENT KUBERNETES :
+Les images sont automatiquement déployées via Helm dans :
+- Namespace dev : Toutes branches
+- Namespace qa : master/develop  
+- Namespace staging : master only
+- Namespace prod : master + manuel
+
+Dernière mise à jour : Novembre 2025
+Ingénieur DevOps : Serge Nyuiadzi (SNsitso)
+Contact : Voir profil GitHub SNsitso
