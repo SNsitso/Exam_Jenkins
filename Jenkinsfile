@@ -88,6 +88,10 @@ pipeline {
                 script {
                     echo "Deploying to Development environment..."
                     sh """
+                        # Verify Kubernetes connection
+                        kubectl version --client
+                        kubectl cluster-info
+                        
                         # Create namespace if not exists
                         kubectl create namespace dev || echo "Namespace dev already exists"
                         
